@@ -1,20 +1,35 @@
 const socket = io()
 let userName;
+let roomName;
 let textarea = document.querySelector('#textarea')
 let messageArea = document.querySelector('.message__area')
-do {
-  userName = prompt('Please enter your name: ')
-} while (!userName)
 
+do {
+  userName = prompt('Please enter your name: ');
+  roomName = prompt('Please enter your room name: ');
+} while (!userName && !roomName)
+
+
+
+if(roomName!==null)
+{
+  socket.emit('join room', roomName);
+}
+
+
+
+
+// Send message to all
 textarea.addEventListener('keyup', (e) => {
   if (e.key === 'Enter') {
     sendMessage(e.target.value);
+    
   }
 })
 
 function sendMessage(message) {
   let msg = {
-    user: userName,
+    sender: userName,
     message: message.trim()
   }
   // Append 
@@ -22,30 +37,35 @@ function sendMessage(message) {
   textarea.value = ''
   scrollToBottom()
 
-  // Send to server 
-  socket.emit('message', msg);
-  
+  //Sending message to a particular room
+  socket.emit('send message', { room: roomName, message: msg });
 
 }
 
-function appendMessage(msg, type) {
+
+// Recieve messages 
+socket.on('new message', (data) => {
+
+  if(data.sender!==userName)
+    appendMessage(data, 'incoming')
+  scrollToBottom()
+})
+
+
+function appendMessage(data, type) {
   let mainDiv = document.createElement('div')
   let className = type
   mainDiv.classList.add(className, 'message')
-
+  console.log(data);
+  console.log("Testing");
   let markup = `
-        <h4>${msg.user}</h4>
-        <p>${msg.message}</p>
+        <h4>${data.sender}</h4>
+        <p>${data.message}</p>
     `
   mainDiv.innerHTML = markup
   messageArea.appendChild(mainDiv)
 }
 
-// Recieve messages 
-socket.on('message', (msg) => {
-  appendMessage(msg, 'incoming')
-  scrollToBottom()
-})
 
 function scrollToBottom() {
   messageArea.scrollTop = messageArea.scrollHeight
@@ -93,7 +113,6 @@ textarea.addEventListener('keyup', () => {
 socket.on('stop typing', () => {
   hideTypingIndicator();
 })
-
 
 function hideTypingIndicator() {
   var typingIndicator = document.getElementById('typing-indicator');
